@@ -1,0 +1,17 @@
+{
+  "name": "galaxy-strike",
+  "version": "1.0.0",
+  "description": "🚀 ターミナルで動くシューティングゲーム - ASCII宇宙を駆けろ！",
+  "main": "index.js",
+  "bin": {
+    "galaxy-strike": "./index.js",
+    "gstrike": "./index.js"
+  },
+  "keywords": ["game", "shooter", "terminal", "ascii", "space", "cli-game"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ryotagtagtag/galaxy-strike"
+  },
+  "files": ["index.js"]
+}
