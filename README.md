@@ -1,6 +1,9 @@
-# Galaxy Strike 🚀
+# NOVA 🚀（旧: GALAXY STRIKE）
 
 ターミナルで動く **ストーリーシューティングゲーム**。`npx galaxy-strike` ですぐ遊べます。
+
+> npm パッケージ名は公開済みの `galaxy-strike` のままです（改名すると既存ユーザーが壊れるため）。
+> プロダクト名は **NOVA** としてリニューアルしました。
 
 ## 遊び方
 

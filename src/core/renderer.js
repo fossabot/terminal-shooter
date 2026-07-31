@@ -25,7 +25,7 @@ function renderGame(E) {
   g[HEIGHT - 1][0] = '└'; g[HEIGHT - 1][WIDTH - 1] = '┘';
 
   // タイトル行
-  const t = ' GALAXY STRIKE ';
+  const t = ' NOVA ';
   for (let i = 0; i < t.length && i < WIDTH - 2; i++) g[0][1 + i] = t[i];
 
   // 自機弾

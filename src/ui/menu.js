@@ -16,7 +16,7 @@ function drawMenu() {
   w(centerDisp(C.bold + '  [H]  HOW TO PLAY' + C.reset, 80) + '\n');
   w(centerDisp(C.bold + '  [Q]  QUIT' + C.reset, 80) + '\n');
   w('\n\n');
-  w(C.dim + centerDisp('v1.2.0  by game_ryo', 80) + C.reset + '\n');
+  w(C.dim + centerDisp('NOVA v1.2.0  by game_ryo', 80) + C.reset + '\n');
   w(C.dim + centerDisp('※ 全5ステージ + ボス戦  /  武器進化・アイテム搭載', 80) + C.reset + '\n');
 }
 

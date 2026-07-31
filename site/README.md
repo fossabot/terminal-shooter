@@ -1,4 +1,4 @@
-# GALAXY STRIKE 公式サイト
+# NOVA 公式サイト
 
 `terminal-shooter/site/` にある静的サイトです。ビルド不要の素の HTML/CSS/JS で構成されています。
 

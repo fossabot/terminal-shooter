@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Galaxy Strike 🚀 メインオーケストレーター
+ * NOVA 🚀 メインオーケストレーター
  * モード（menu / help / intro / play / clear / over / ending）を遷移させる。
  *
  * 操作方法:
