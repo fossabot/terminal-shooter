@@ -5,24 +5,36 @@
  * 雑魚のウェーブ進行 → ボス戦 → ステージクリア の流れを司る。
  */
 const {
-  WIDTH, HEIGHT, HALF_W, EXPLODE, ENEMY_TYPES,
+  WIDTH, HEIGHT, HALF_W, SIZES, EXPLODE, ENEMY_TYPES,
   INIT_LIVES, MAX_LIVES, EXTRA_LIFE_SCORE,
   DROP_RATE, ITEM_CHARS, DROP_WEIGHTS, POWER_TICKS, ITEM_FALL_SPD,
 } = require('../config');
 const { stageData } = require('../story/stages');
 
+/** 大画面モードの画面サイズを E に適用 */
+function applySize(E) {
+  const sz = SIZES[E.sizeMode] || SIZES.normal;
+  E.width = sz.width;
+  E.height = sz.height;
+  E.halfW = Math.floor(E.width / 2);
+}
+
 /** オンライン対戦時の自陣のX範囲を取得（netSide: 'L' | 'R' | null） */
 function sideRange(E) {
-  if (E.netSide === 'L') return { min: 1, max: HALF_W - 1 };
-  if (E.netSide === 'R') return { min: HALF_W, max: WIDTH - 2 };
-  return { min: 1, max: WIDTH - 2 };
+  if (E.netSide === 'L') return { min: 1, max: E.halfW - 1 };
+  if (E.netSide === 'R') return { min: E.halfW, max: E.width - 2 };
+  return { min: 1, max: E.width - 2 };
 }
 
 /** 初期状態を生成 */
 function newState() {
-  return {
-    mode: 'menu',            // menu | help | intro | play | clear | over | ending
+  const E = {
+    mode: 'menu',            // menu | help | intro | play | clear | over | ending | lobby | netconfig | netwait | netplay
     stage: 1,
+    sizeMode: 'normal',      // normal | large（大画面モード）
+    width: WIDTH,
+    height: HEIGHT,
+    halfW: HALF_W,
     px: Math.floor(WIDTH / 2),
     py: HEIGHT - 2,
     bullets: [],
@@ -50,6 +62,8 @@ function newState() {
     extraNext: EXTRA_LIFE_SCORE,
     runStats: { kills: 0, bosses: 0, maxStage: 1 },
   };
+  applySize(E);
+  return E;
 }
 
 /** ウェーブ開始 */
@@ -73,10 +87,11 @@ function startWave(E, idx) {
 
 /** ステージ開始（プレイ状態を初期化） */
 function startStage(E, stage) {
+  applySize(E); // 大画面モードなら拡大されたフィールドで開始
   E.stage = stage;
   E.runStats.maxStage = Math.max(E.runStats.maxStage || 1, stage);
-  E.px = Math.floor(WIDTH / 2);
-  E.py = HEIGHT - 2;
+  E.px = Math.floor(E.width / 2);
+  E.py = E.height - 2;
   E.bullets = [];
   E.enemies = [];
   E.ebullets = [];
@@ -153,7 +168,7 @@ function rollDrop(E, x, y) {
   else if (r < DROP_WEIGHTS.life + DROP_WEIGHTS.power) type = 'power';
   else type = 'overdrive';
   E.items.push({
-    x: Math.max(1, Math.min(WIDTH - 2, x)),
+    x: Math.max(1, Math.min(E.width - 2, x)),
     y,
     ch: ITEM_CHARS[type],
     type,
@@ -222,14 +237,14 @@ function update(E) {
     const b = E.bullets[i];
     b.x += b.vx;
     b.y += b.vy;
-    if (b.y < 1 || b.x < 1 || b.x > WIDTH - 1) E.bullets.splice(i, 1);
+    if (b.y < 1 || b.x < 1 || b.x > E.width - 1) E.bullets.splice(i, 1);
   }
 
   // ── 敵の移動 + 射撃 ──
   for (let i = E.enemies.length - 1; i >= 0; i--) {
     const e = E.enemies[i];
     e.y += 0.15 * e.sp;
-    if (e.y < HEIGHT - 2 && e.fire > 0 && Math.random() < e.fire) {
+    if (e.y < E.height - 2 && e.fire > 0 && Math.random() < e.fire) {
       E.ebullets.push({ x: e.x, y: e.y + 0.6, vx: 0, vy: 0.5 });
     }
   }
@@ -239,7 +254,7 @@ function update(E) {
     const eb = E.ebullets[i];
     eb.x += eb.vx;
     eb.y += eb.vy;
-    if (eb.y > HEIGHT - 1 || eb.x < 1 || eb.x > WIDTH - 1) E.ebullets.splice(i, 1);
+    if (eb.y > E.height - 1 || eb.x < 1 || eb.x > E.width - 1) E.ebullets.splice(i, 1);
   }
 
   // ── 自機弾 vs 雑魚敵 ──
@@ -316,11 +331,11 @@ function update(E) {
   // ── 雑魚敵が底到達 / 自機接触 ──
   for (let i = E.enemies.length - 1; i >= 0; i--) {
     const e = E.enemies[i];
-    if (e.y >= HEIGHT - 1) {
+    if (e.y >= E.height - 1) {
       if (E.invuln <= 0) {
         E.lives--;
         E.invuln = 90;
-        explode(E, e.x, HEIGHT - 2);
+        explode(E, e.x, E.height - 2);
       }
       E.enemies.splice(i, 1);
       if (E.lives <= 0) E.over = true;
@@ -368,7 +383,7 @@ function update(E) {
   for (let i = E.items.length - 1; i >= 0; i--) {
     const it = E.items[i];
     it.y += 0.15 * it.sp;
-    if (it.y >= HEIGHT - 1) {
+    if (it.y >= E.height - 1) {
       E.items.splice(i, 1); // 画面外へ
       continue;
     }

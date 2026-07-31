@@ -17,7 +17,7 @@
  *   [R] 部屋を作る / [1-9] 部屋に参加 / [C] API設定
  */
 const {
-  WIDTH, HEIGHT, HALF_W, INIT_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, C,
+  INIT_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, C,
 } = require('./config');
 const engine = require('./core/engine');
 const { fireWeapon, WEAPONS } = require('./core/weapons');
@@ -77,13 +77,14 @@ function quit() {
 
 // ── オンライン対戦 ──
 /** オンライン対戦の開始（左右に分かれて位置同期プレイ） */
-function startNetPlay(side) {
+function startNetPlay(side, size) {
   E.netSide = side;
+  if (size) E.sizeMode = size; // ホストの画面サイズに合わせる
   E.stage = 1;
   engine.startStage(E, 1);
   E.netSide = side; // startStage は netSide を触らないが明示的に維持
-  E.px = side === 'L' ? Math.floor(HALF_W / 2) : HALF_W + Math.floor((WIDTH - 2 - HALF_W) / 2);
-  E.py = HEIGHT - 2;
+  E.px = side === 'L' ? Math.floor(E.halfW / 2) : E.halfW + Math.floor((E.width - 2 - E.halfW) / 2);
+  E.py = E.height - 2;
   E.mode = 'netplay';
 }
 
@@ -183,6 +184,7 @@ function handleKey(raw) {
       if (t === 's' || t === 'enter' || t === 'space') newGame();
       else if (t === 'n') E.mode = 'lobby';
       else if (t === 'h') E.mode = 'help';
+      else if (t === 'l') E.sizeMode = E.sizeMode === 'large' ? 'normal' : 'large'; // 大画面モード切替
       else if (t === 'q') quit();
       break;
 
@@ -191,12 +193,12 @@ function handleKey(raw) {
       break;
 
     case 'lobby': {
-      if (t === 'r') { net.createRoom(); E.mode = 'netwait'; }
+      if (t === 'r') { net.N.sizeMode = E.sizeMode; net.createRoom(); E.mode = 'netwait'; }
       else if (t === 'c') { E.mode = 'netconfig'; E.netEdit = null; }
       else if (t >= '1' && t <= '9') {
         const rooms = [...net.N.lobby.rooms.keys()];
         const idx = Number(t) - 1;
-        if (rooms[idx]) { net.joinRoom(rooms[idx]); E.mode = 'netwait'; }
+        if (rooms[idx]) { net.N.sizeMode = E.sizeMode; net.joinRoom(rooms[idx]); E.mode = 'netwait'; }
       }
       else if (t === 'b' || t === 'esc' || t === 'm') toMenu();
       else if (t === 'q') quit();
@@ -243,16 +245,16 @@ function handleKey(raw) {
       switch (t) {
         case 'left':
           if (E.mode === 'netplay') {
-            E.px = Math.max(E.netSide === 'L' ? 1 : HALF_W, E.px - 1);
+            E.px = Math.max(E.netSide === 'L' ? 1 : E.halfW, E.px - 1);
           } else {
             E.px = Math.max(1, E.px - 1);
           }
           break;
         case 'right':
           if (E.mode === 'netplay') {
-            E.px = Math.min(E.netSide === 'L' ? HALF_W - 1 : WIDTH - 2, E.px + 1);
+            E.px = Math.min(E.netSide === 'L' ? E.halfW - 1 : E.width - 2, E.px + 1);
           } else {
-            E.px = Math.min(WIDTH - 2, E.px + 1);
+            E.px = Math.min(E.width - 2, E.px + 1);
           }
           break;
         case 'up': case 'w': case 'space': fireWeapon(E); break;

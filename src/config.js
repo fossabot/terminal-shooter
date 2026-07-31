@@ -1,9 +1,17 @@
 'use strict';
 
 // ── 画面 ──
-const WIDTH = 34;
+const WIDTH = 34;   // 標準モード
 const HEIGHT = 18;
 const HALF_W = Math.floor(WIDTH / 2); // オンライン対戦の左右ハーフ幅 (17)
+
+// 大画面モード（メニューで切替）
+const LARGE_WIDTH = 50;
+const LARGE_HEIGHT = 22;
+const SIZES = {
+  normal: { width: WIDTH, height: HEIGHT },
+  large: { width: LARGE_WIDTH, height: LARGE_HEIGHT },
+};
 
 // ── シンボル ──
 const PLAYER = '▲';
@@ -56,7 +64,7 @@ const C = {
 };
 
 module.exports = {
-  WIDTH, HEIGHT, HALF_W,
+  WIDTH, HEIGHT, HALF_W, LARGE_WIDTH, LARGE_HEIGHT, SIZES,
   PLAYER, BULLET, EBULLET, EXPLODE,
   INIT_LIVES, MAX_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, TOTAL_STAGES,
   DROP_RATE, ITEM_CHARS, ITEM_COLORS, DROP_WEIGHTS, POWER_TICKS, ITEM_FALL_SPD,

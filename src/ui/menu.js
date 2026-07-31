@@ -5,7 +5,7 @@ const { C } = require('../config');
 const { WEAPONS } = require('../core/weapons');
 const { cls, w, centerDisp, drawTitle, hint, printBox, padDisp } = require('./helpers');
 
-function drawMenu() {
+function drawMenu(E) {
   cls();
   w('\n\n');
   drawTitle();
@@ -14,11 +14,13 @@ function drawMenu() {
   w('\n\n');
   w(centerDisp(C.bold + '  [S]  STORY MODE 開始' + C.reset, 80) + '\n');
   w(centerDisp(C.gold + '  [N]  ONLINE MODE（対戦ロビー）' + C.reset, 80) + '\n');
+  const large = E && E.sizeMode === 'large';
+  w(centerDisp((large ? C.green : C.dim) + `  [L]  大画面モード: ${large ? 'ON  (50×22)' : 'OFF (34×18)'}` + C.reset, 80) + '\n');
   w(centerDisp(C.bold + '  [H]  HOW TO PLAY' + C.reset, 80) + '\n');
   w(centerDisp(C.bold + '  [Q]  QUIT' + C.reset, 80) + '\n');
   w('\n\n');
   w(C.dim + centerDisp('NOVA v1.4.0  by game_ryo', 80) + C.reset + '\n');
-  w(C.dim + centerDisp('※ 全5ステージ + ボス戦  /  武器進化・アイテム搭載  /  オンライン対戦', 80) + C.reset + '\n');
+  w(C.dim + centerDisp('※ 全5ステージ + ボス戦  /  武器進化・アイテム搭載  /  オンライン対戦  /  大画面モード', 80) + C.reset + '\n');
 }
 
 function drawHelp() {
@@ -54,6 +56,11 @@ function drawHelp() {
   lines.push('  2人が揃うと左右に分かれて対戦（位置同期）');
   lines.push('  相手の機体は緑色で表示されます');
   lines.push('  ※ 通信には PieSocket を使用（Cluster ID / API Key は設定画面で変更可）');
+  lines.push('');
+  lines.push('== 大画面モード ==');
+  lines.push('  メニューで [L] を押すと切替');
+  lines.push('  標準 34×18 → 大画面 50×22 にフィールドが拡大');
+  lines.push('  広いターミナルで遊ぶときにおすすめ');
   lines.push('');
   printBox(lines, 52, 1);
   hint('[SPACE] メニューに戻る');

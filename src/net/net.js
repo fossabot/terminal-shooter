@@ -26,6 +26,7 @@ const N = {
   me: api.current().name,
   host: false,
   side: null,           // 'L' | 'R' | null
+  sizeMode: 'normal',   // 大画面モードをホストから共有（normal | large）
   peer: null,           // { name, x, y, lives, score, weapon, last }
   lobby: { players: new Set(), rooms: new Map() },
   // 内部
@@ -208,14 +209,14 @@ function onGameMessage(msg) {
     // ホスト側: 相手が来たら開始
     if (N.host && !N.started) {
       N.started = true;
-      send(N.conn, 'gstart', N.me, {});
-      emit('gameStart', 'L');
+      send(N.conn, 'gstart', N.me, { size: N.sizeMode });
+      emit('gameStart', 'L', N.sizeMode);
     }
   } else if (event === 'gstart') {
-    // ゲスト側: ホストの開始合図で開始
+    // ゲスト側: ホストの開始合図で開始（画面サイズも合わせる）
     if (!N.host && !N.started) {
       N.started = true;
-      emit('gameStart', 'R');
+      emit('gameStart', 'R', (data && data.size) || 'normal');
     }
   } else if (event === 'gpos') {
     N.peer = {

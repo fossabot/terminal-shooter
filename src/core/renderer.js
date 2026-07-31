@@ -5,7 +5,7 @@
  * グリッドを1文字単位で組み立て、1フレーム分をまとめて描画する。
  */
 const {
-  WIDTH, HEIGHT, HALF_W, PLAYER, BULLET, EBULLET, EXPLODE, ENEMY_TYPES, INIT_LIVES, C,
+  PLAYER, BULLET, EBULLET, EXPLODE, ENEMY_TYPES, INIT_LIVES, C,
   ITEM_CHARS, ITEM_COLORS, POWER_TICKS,
 } = require('../config');
 const { WEAPONS } = require('./weapons');
@@ -17,52 +17,53 @@ const ITEM_COLORS_BY_CHAR = {};
 for (const [type, ch] of Object.entries(ITEM_CHARS)) ITEM_COLORS_BY_CHAR[ch] = ITEM_COLORS[type];
 
 function renderGame(E) {
-  const g = Array.from({ length: HEIGHT }, () => Array(WIDTH).fill(' '));
+  const W = E.width, H = E.height;
+  const g = Array.from({ length: H }, () => Array(W).fill(' '));
 
   // 枠
-  for (let x = 0; x < WIDTH; x++) { g[0][x] = '─'; g[HEIGHT - 1][x] = '─'; }
-  for (let y = 0; y < HEIGHT; y++) { g[y][0] = '│'; g[y][WIDTH - 1] = '│'; }
-  g[0][0] = '┌'; g[0][WIDTH - 1] = '┐';
-  g[HEIGHT - 1][0] = '└'; g[HEIGHT - 1][WIDTH - 1] = '┘';
+  for (let x = 0; x < W; x++) { g[0][x] = '─'; g[H - 1][x] = '─'; }
+  for (let y = 0; y < H; y++) { g[y][0] = '│'; g[y][W - 1] = '│'; }
+  g[0][0] = '┌'; g[0][W - 1] = '┐';
+  g[H - 1][0] = '└'; g[H - 1][W - 1] = '┘';
 
   // タイトル行
   const t = ' NOVA ';
-  for (let i = 0; i < t.length && i < WIDTH - 2; i++) g[0][1 + i] = t[i];
+  for (let i = 0; i < t.length && i < W - 2; i++) g[0][1 + i] = t[i];
 
   // 自機弾
   for (const b of E.bullets) {
     const bx = Math.floor(b.x), by = Math.floor(b.y);
-    if (by > 0 && by < HEIGHT - 1 && bx > 0 && bx < WIDTH - 1) g[by][bx] = BULLET;
+    if (by > 0 && by < H - 1 && bx > 0 && bx < W - 1) g[by][bx] = BULLET;
   }
 
   // 雑魚敵
   for (const e of E.enemies) {
     const ex = Math.floor(e.x), ey = Math.floor(e.y);
-    if (ey > 0 && ey < HEIGHT - 1 && ex > 0 && ex < WIDTH - 1) g[ey][ex] = e.ch;
+    if (ey > 0 && ey < H - 1 && ex > 0 && ex < W - 1) g[ey][ex] = e.ch;
   }
 
   // ボス
   if (E.boss) {
     const bx = Math.floor(E.boss.x), by = Math.floor(E.boss.y);
-    if (by > 0 && by < HEIGHT - 1 && bx > 0 && bx < WIDTH - 1) g[by][bx] = E.boss.ch;
+    if (by > 0 && by < H - 1 && bx > 0 && bx < W - 1) g[by][bx] = E.boss.ch;
   }
 
   // 敵弾
   for (const eb of E.ebullets) {
     const ex = Math.floor(eb.x), ey = Math.floor(eb.y);
-    if (ey > 0 && ey < HEIGHT - 1 && ex > 0 && ex < WIDTH - 1) g[ey][ex] = EBULLET;
+    if (ey > 0 && ey < H - 1 && ex > 0 && ex < W - 1) g[ey][ex] = EBULLET;
   }
 
   // アイテム
   for (const it of E.items) {
     const ix = Math.floor(it.x), iy = Math.floor(it.y);
-    if (iy > 0 && iy < HEIGHT - 1 && ix > 0 && ix < WIDTH - 1) g[iy][ix] = it.ch;
+    if (iy > 0 && iy < H - 1 && ix > 0 && ix < W - 1) g[iy][ix] = it.ch;
   }
 
   // 爆発
   for (const ex of E.explosions) {
     const exx = Math.floor(ex.x), eyy = Math.floor(ex.y);
-    if (eyy > 0 && eyy < HEIGHT - 1 && exx > 0 && exx < WIDTH - 1) g[eyy][exx] = ex.ch;
+    if (eyy > 0 && eyy < H - 1 && exx > 0 && exx < W - 1) g[eyy][exx] = ex.ch;
   }
 
   // 自機（無敵中はブリンク）
@@ -77,10 +78,10 @@ function renderGame(E) {
     const p = net.N.peer;
     if (typeof p.x === 'number' && typeof p.y === 'number') {
       const range = E.netSide === 'L'
-        ? { min: 1, max: HALF_W - 1 }
-        : { min: HALF_W, max: WIDTH - 2 };
+        ? { min: 1, max: E.halfW - 1 }
+        : { min: E.halfW, max: W - 2 };
       peerFx = Math.floor(Math.max(range.min, Math.min(range.max, p.x)));
-      peerFy = Math.floor(Math.max(1, Math.min(HEIGHT - 2, p.y)));
+      peerFy = Math.floor(Math.max(1, Math.min(H - 2, p.y)));
       if (!E.over) g[peerFy][peerFx] = PLAYER;
     }
   }
@@ -88,17 +89,17 @@ function renderGame(E) {
   // ウェーブ/ボスバナー（グリッド中央に重ねる）
   if (E.waveBanner) {
     const msg = `<< ${E.waveBanner.text} >>`;
-    const sx = Math.max(1, Math.floor((WIDTH - msg.length) / 2));
-    const sy = Math.floor(HEIGHT / 2);
-    for (let i = 0; i < msg.length && sx + i < WIDTH - 1; i++) g[sy][sx + i] = msg[i];
+    const sx = Math.max(1, Math.floor((W - msg.length) / 2));
+    const sy = Math.floor(H / 2);
+    for (let i = 0; i < msg.length && sx + i < W - 1; i++) g[sy][sx + i] = msg[i];
   }
 
   // ── 描画 ──
   const bossCh = E.boss ? E.boss.ch : null;
   let out = '\x1b[1;1H';
-  for (let y = 0; y < HEIGHT; y++) {
+  for (let y = 0; y < H; y++) {
     out += '\x1b[K';
-    for (let x = 0; x < WIDTH; x++) {
+    for (let x = 0; x < W; x++) {
       const ch = g[y][x];
       if (ch === ' ') { out += ' '; continue; }
       if (x === peerFx && y === peerFy) out += '\x1b[1;32m' + ch + C.reset; // 対戦相手（緑）
@@ -136,7 +137,7 @@ function renderGame(E) {
   } else {
     hud = ` SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/5  WPN:Lv${E.weapon} ${wname}`;
   }
-  out += '\x1b[K' + hud.substring(0, WIDTH + 14) + C.reset + '\n';
+  out += '\x1b[K' + hud.substring(0, E.width + 14) + C.reset + '\n';
 
   // パワー/オーバードライブ タイマー
   if (E.power > 0 || E.overdrive > 0) {
@@ -152,7 +153,7 @@ function renderGame(E) {
 
   // トースト（実績・アイテム告知）
   if (E.toast) {
-    out += '\x1b[K' + C.gold + E.toast.text.substring(0, WIDTH + 10) + C.reset + '\n';
+    out += '\x1b[K' + C.gold + E.toast.text.substring(0, E.width + 10) + C.reset + '\n';
   } else {
     out += '\x1b[K' + '\n';
   }
@@ -173,7 +174,7 @@ function renderGame(E) {
   else if (E.paused) footer = ' ** PAUSED **  [P]再開  [R]リトライ  [M]ロビーへ  [Q]終了  ';
   else if (isNet) footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  M:ロビーへ  Q:終了  ';
   else footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  Q:終了  ';
-  out += '\x1b[K' + footer.substring(0, WIDTH + 22) + C.reset;
+  out += '\x1b[K' + footer.substring(0, E.width + 22) + C.reset;
 
   process.stdout.write(out);
 }
