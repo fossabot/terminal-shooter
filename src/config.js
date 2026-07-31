@@ -3,6 +3,7 @@
 // ── 画面 ──
 const WIDTH = 34;
 const HEIGHT = 18;
+const HALF_W = Math.floor(WIDTH / 2); // オンライン対戦の左右ハーフ幅 (17)
 
 // ── シンボル ──
 const PLAYER = '▲';
@@ -55,7 +56,7 @@ const C = {
 };
 
 module.exports = {
-  WIDTH, HEIGHT,
+  WIDTH, HEIGHT, HALF_W,
   PLAYER, BULLET, EBULLET, EXPLODE,
   INIT_LIVES, MAX_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, TOTAL_STAGES,
   DROP_RATE, ITEM_CHARS, ITEM_COLORS, DROP_WEIGHTS, POWER_TICKS, ITEM_FALL_SPD,

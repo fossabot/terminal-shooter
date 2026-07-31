@@ -5,11 +5,18 @@
  * 雑魚のウェーブ進行 → ボス戦 → ステージクリア の流れを司る。
  */
 const {
-  WIDTH, HEIGHT, EXPLODE, ENEMY_TYPES,
+  WIDTH, HEIGHT, HALF_W, EXPLODE, ENEMY_TYPES,
   INIT_LIVES, MAX_LIVES, EXTRA_LIFE_SCORE,
   DROP_RATE, ITEM_CHARS, DROP_WEIGHTS, POWER_TICKS, ITEM_FALL_SPD,
 } = require('../config');
 const { stageData } = require('../story/stages');
+
+/** オンライン対戦時の自陣のX範囲を取得（netSide: 'L' | 'R' | null） */
+function sideRange(E) {
+  if (E.netSide === 'L') return { min: 1, max: HALF_W - 1 };
+  if (E.netSide === 'R') return { min: HALF_W, max: WIDTH - 2 };
+  return { min: 1, max: WIDTH - 2 };
+}
 
 /** 初期状態を生成 */
 function newState() {
@@ -96,8 +103,9 @@ function startStage(E, stage) {
 function scaled(typeName, E) {
   const base = ENEMY_TYPES[typeName];
   const diff = 1 + (E.stage - 1) * 0.12;
+  const range = sideRange(E);
   return {
-    x: 1 + Math.random() * (WIDTH - 3),
+    x: range.min + Math.random() * (range.max - range.min),
     y: 1,
     ch: base.ch,
     hp: base.hp + (E.stage >= 3 ? 1 : 0),
@@ -110,12 +118,13 @@ function scaled(typeName, E) {
 
 function spawnBoss(E) {
   const b = stageData(E).boss;
+  const range = sideRange(E);
   E.boss = {
     name: b.name,
     ch: b.ch,
     hp: b.hp,
     maxHp: b.hp,
-    x: Math.floor(WIDTH / 2),
+    x: Math.floor((range.min + range.max) / 2),
     y: 1,
     dir: 1,
     sp: b.sp,
@@ -292,9 +301,10 @@ function update(E) {
   // ── ボス移動・射撃 ──
   if (E.boss) {
     const b = E.boss;
+    const range = sideRange(E);
     b.x += b.dir * b.sp;
-    if (b.x <= 2) { b.dir = 1; b.y += 0.7; }
-    if (b.x >= WIDTH - 3) { b.dir = -1; b.y += 0.7; }
+    if (b.x <= range.min + 1) { b.dir = 1; b.y += 0.7; }
+    if (b.x >= range.max - 1) { b.dir = -1; b.y += 0.7; }
     if (b.y > 5) b.y = 2;
     b.fireTick++;
     if (b.fireTick >= b.fireEvery) {

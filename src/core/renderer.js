@@ -5,11 +5,12 @@
  * グリッドを1文字単位で組み立て、1フレーム分をまとめて描画する。
  */
 const {
-  WIDTH, HEIGHT, PLAYER, BULLET, EBULLET, EXPLODE, ENEMY_TYPES, INIT_LIVES, C,
+  WIDTH, HEIGHT, HALF_W, PLAYER, BULLET, EBULLET, EXPLODE, ENEMY_TYPES, INIT_LIVES, C,
   ITEM_CHARS, ITEM_COLORS, POWER_TICKS,
 } = require('../config');
 const { WEAPONS } = require('./weapons');
 const { stageData } = require('../story/stages');
+const net = require('../net/net');
 
 const ENEMY_CHARS = new Set(Object.values(ENEMY_TYPES).map((t) => t.ch));
 const ITEM_COLORS_BY_CHAR = {};
@@ -70,6 +71,20 @@ function renderGame(E) {
     g[E.py][E.px] = blink ? ' ' : PLAYER;
   }
 
+  // 対戦相手の機体（オンライン対戦時のみ・位置同期）
+  let peerFx = -1, peerFy = -1;
+  if (E.netSide && net.N.started && net.N.peer) {
+    const p = net.N.peer;
+    if (typeof p.x === 'number' && typeof p.y === 'number') {
+      const range = E.netSide === 'L'
+        ? { min: 1, max: HALF_W - 1 }
+        : { min: HALF_W, max: WIDTH - 2 };
+      peerFx = Math.floor(Math.max(range.min, Math.min(range.max, p.x)));
+      peerFy = Math.floor(Math.max(1, Math.min(HEIGHT - 2, p.y)));
+      if (!E.over) g[peerFy][peerFx] = PLAYER;
+    }
+  }
+
   // ウェーブ/ボスバナー（グリッド中央に重ねる）
   if (E.waveBanner) {
     const msg = `<< ${E.waveBanner.text} >>`;
@@ -86,7 +101,8 @@ function renderGame(E) {
     for (let x = 0; x < WIDTH; x++) {
       const ch = g[y][x];
       if (ch === ' ') { out += ' '; continue; }
-      if (ch === PLAYER) out += C.player + PLAYER + C.reset;
+      if (x === peerFx && y === peerFy) out += '\x1b[1;32m' + ch + C.reset; // 対戦相手（緑）
+      else if (ch === PLAYER) out += C.player + PLAYER + C.reset;
       else if (ch === BULLET) out += C.bullet + ch + C.reset;
       else if (ch === EBULLET) out += C.ebullet + ch + C.reset;
       else if (ITEM_COLORS_BY_CHAR[ch]) out += ITEM_COLORS_BY_CHAR[ch] + ch + C.reset;
@@ -106,7 +122,20 @@ function renderGame(E) {
   const st = stageData(E);
   const hearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
   const wname = WEAPONS[E.weapon - 1] ? WEAPONS[E.weapon - 1].name : '';
-  const hud = ` SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/5  WPN:Lv${E.weapon} ${wname}`;
+  let hud;
+  if (E.netSide && net.N.started) {
+    // オンライン対戦: 1P / 2P 双方を表示
+    const p = net.N.peer;
+    const ph = p && typeof p.lives === 'number'
+      ? '♥'.repeat(Math.max(0, p.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, p.lives)))
+      : '---';
+    const psc = p && typeof p.score === 'number' ? String(p.score).padStart(6, '0') : '------';
+    const tagL = E.netSide === 'L' ? '1P' : '2P';
+    const tagR = E.netSide === 'L' ? '2P' : '1P';
+    hud = ` ${tagL}▲${hearts} ${String(E.score).padStart(6, '0')}   ${tagR}▲${ph} ${psc}`;
+  } else {
+    hud = ` SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/5  WPN:Lv${E.weapon} ${wname}`;
+  }
   out += '\x1b[K' + hud.substring(0, WIDTH + 14) + C.reset + '\n';
 
   // パワー/オーバードライブ タイマー
@@ -138,9 +167,11 @@ function renderGame(E) {
   }
 
   // ── フッター ──
+  const isNet = !!E.netSide;
   let footer;
-  if (E.over) footer = ' GAME OVER!  [R]再挑戦  [M]メニュー  [Q]終了  ';
-  else if (E.paused) footer = ' ** PAUSED **  [P]再開  [R]リトライ  [M]メニュー  [Q]終了  ';
+  if (E.over) footer = ' GAME OVER!  [R]再挑戦  [M]ロビーへ  [Q]終了  ';
+  else if (E.paused) footer = ' ** PAUSED **  [P]再開  [R]リトライ  [M]ロビーへ  [Q]終了  ';
+  else if (isNet) footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  M:ロビーへ  Q:終了  ';
   else footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  Q:終了  ';
   out += '\x1b[K' + footer.substring(0, WIDTH + 22) + C.reset;
 

@@ -2,7 +2,7 @@
 
 /**
  * NOVA 🚀 メインオーケストレーター
- * モード（menu / help / intro / play / clear / over / ending）を遷移させる。
+ * モード（menu / help / intro / play / clear / over / ending / lobby / netconfig / netwait / netplay）を遷移させる。
  *
  * 操作方法:
  *   ← → / A D ..... 移動
@@ -11,9 +11,13 @@
  *   R ............. 再挑戦
  *   M ............. メニューへ
  *   Q ............. 終了
+ *
+ * オンライン対戦（PieSocket）:
+ *   [N] ONLINE MODE → ロビー（home）へ自動接続
+ *   [R] 部屋を作る / [1-9] 部屋に参加 / [C] API設定
  */
 const {
-  WIDTH, INIT_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, C,
+  WIDTH, HEIGHT, HALF_W, INIT_LIVES, TICK_MS, MAX_WEAPON, EXTRA_LIFE_SCORE, STAGE_CLEAR_LIFE, C,
 } = require('./config');
 const engine = require('./core/engine');
 const { fireWeapon, WEAPONS } = require('./core/weapons');
@@ -26,6 +30,9 @@ const introUI = require('./ui/intro');
 const clearUI = require('./ui/clear');
 const gameoverUI = require('./ui/gameover');
 const endingUI = require('./ui/ending');
+const netUI = require('./ui/net');
+const net = require('./net/net');
+const api = require('./net/api-config');
 
 const E = engine.newState();
 let iv = null;
@@ -53,7 +60,8 @@ function startPlay() {
 
 function retry() {
   E.lives = INIT_LIVES; // スコア・武器は維持
-  startPlay();
+  if (E.netSide) startNetPlay(E.netSide);
+  else startPlay();
 }
 
 function toMenu() {
@@ -62,8 +70,36 @@ function toMenu() {
 
 function quit() {
   if (iv) clearInterval(iv);
+  net.shutdown();
   cleanup();
   process.exit(0);
+}
+
+// ── オンライン対戦 ──
+/** オンライン対戦の開始（左右に分かれて位置同期プレイ） */
+function startNetPlay(side) {
+  E.netSide = side;
+  E.stage = 1;
+  engine.startStage(E, 1);
+  E.netSide = side; // startStage は netSide を触らないが明示的に維持
+  E.px = side === 'L' ? Math.floor(HALF_W / 2) : HALF_W + Math.floor((WIDTH - 2 - HALF_W) / 2);
+  E.py = HEIGHT - 2;
+  E.mode = 'netplay';
+}
+
+/** オンライン対戦からロビーへ戻る */
+function backToLobby() {
+  E.netSide = null;
+  net.leaveGame();
+  E.mode = 'lobby';
+}
+
+/** 対戦中の通信断など */
+function onGameDrop(msg) {
+  E.netDropMsg = msg || '接続が切れました';
+  E.netSide = null;
+  net.connectLobby();
+  E.mode = 'lobby';
 }
 
 /** クリア報酬を適用 */
@@ -96,8 +132,48 @@ function nextAfterClear() {
   }
 }
 
+// ── カスタムAPI設定の入力（raw文字を大文字小文字のまま扱う） ──
+function handleNetEdit(raw) {
+  if (raw === '\x03') return quit();
+  if (raw === '\r' || raw === '\n') return commitNetField();
+  if (raw === '\x7f' || raw === '\x08') {
+    E.netInput[E.netEdit] = (E.netInput[E.netEdit] || '').slice(0, -1);
+    return;
+  }
+  if (raw === '\x1b') { E.netEdit = null; return; } // キャンセル
+  if (/^[\x20-\x7e]$/.test(raw)) { // 表示可能なASCIIのみ
+    E.netInput[E.netEdit] = (E.netInput[E.netEdit] || '') + raw;
+  }
+}
+
+function commitNetField() {
+  const val = (E.netInput[E.netEdit] || '').trim();
+  if (E.netEdit === 'cluster') {
+    if (val) E.netInput.cluster = val;
+    E.netEdit = 'key';
+  } else if (E.netEdit === 'key') {
+    if (val) E.netInput.key = val;
+    // 保存 → 再接続
+    const cfg = api.loadCustom() || {};
+    api.saveCustom({
+      cluster: E.netInput.cluster || cfg.cluster || api.DEFAULT_CLUSTER,
+      apiKey: E.netInput.key || cfg.apiKey || api.DEFAULT_API_KEY,
+      name: cfg.name || api.current().name,
+    });
+    E.netEdit = null;
+    net.applyConfig();
+    net.connectLobby(); // 新しいキーで再接続
+  }
+}
+
 // ── 入力処理 ──
 function handleKey(raw) {
+  // 設定入力中は生キーをそのまま扱う
+  if (E.mode === 'netconfig' && E.netEdit) {
+    handleNetEdit(raw);
+    return;
+  }
+
   const t = keyToken(raw);
   if (!t) return;
   if (t === 'ctrl-c') return quit();
@@ -105,12 +181,41 @@ function handleKey(raw) {
   switch (E.mode) {
     case 'menu':
       if (t === 's' || t === 'enter' || t === 'space') newGame();
+      else if (t === 'n') E.mode = 'lobby';
       else if (t === 'h') E.mode = 'help';
       else if (t === 'q') quit();
       break;
 
     case 'help':
       if (t === 'space' || t === 'enter' || t === 'q' || t === 'esc') toMenu();
+      break;
+
+    case 'lobby': {
+      if (t === 'r') { net.createRoom(); E.mode = 'netwait'; }
+      else if (t === 'c') { E.mode = 'netconfig'; E.netEdit = null; }
+      else if (t >= '1' && t <= '9') {
+        const rooms = [...net.N.lobby.rooms.keys()];
+        const idx = Number(t) - 1;
+        if (rooms[idx]) { net.joinRoom(rooms[idx]); E.mode = 'netwait'; }
+      }
+      else if (t === 'b' || t === 'esc' || t === 'm') toMenu();
+      else if (t === 'q') quit();
+      break;
+    }
+
+    case 'netconfig':
+      if (t === 'e') { E.netEdit = 'cluster'; E.netInput = { cluster: '', key: '' }; }
+      else if (t === 'd') {
+        api.resetCustom();
+        net.applyConfig();
+        net.connectLobby();
+      }
+      else if (t === 'b' || t === 'esc') E.mode = 'lobby';
+      else if (t === 'q') quit();
+      break;
+
+    case 'netwait':
+      if (t === 'q' || t === 'esc' || t === 'm') backToLobby();
       break;
 
     case 'intro': {
@@ -127,18 +232,32 @@ function handleKey(raw) {
     }
 
     case 'play':
+    case 'netplay':
       if (E.paused) {
         if (t === 'p') E.paused = false;
         else if (t === 'r') retry();
-        else if (t === 'm') toMenu();
+        else if (t === 'm') (E.mode === 'netplay' ? backToLobby() : toMenu());
         else if (t === 'q') quit();
         break;
       }
       switch (t) {
-        case 'left': E.px = Math.max(1, E.px - 1); break;
-        case 'right': E.px = Math.min(WIDTH - 2, E.px + 1); break;
+        case 'left':
+          if (E.mode === 'netplay') {
+            E.px = Math.max(E.netSide === 'L' ? 1 : HALF_W, E.px - 1);
+          } else {
+            E.px = Math.max(1, E.px - 1);
+          }
+          break;
+        case 'right':
+          if (E.mode === 'netplay') {
+            E.px = Math.min(E.netSide === 'L' ? HALF_W - 1 : WIDTH - 2, E.px + 1);
+          } else {
+            E.px = Math.min(WIDTH - 2, E.px + 1);
+          }
+          break;
         case 'up': case 'w': case 'space': fireWeapon(E); break;
         case 'p': E.paused = true; break;
+        case 'm': if (E.mode === 'netplay') backToLobby(); break;
         case 'q': quit(); break;
       }
       break;
@@ -150,7 +269,7 @@ function handleKey(raw) {
 
     case 'over':
       if (t === 'r' || t === 'space') retry();
-      else if (t === 'm') toMenu();
+      else if (t === 'm') (E.netSide ? backToLobby() : toMenu());
       else if (t === 'q') quit();
       break;
 
@@ -188,9 +307,16 @@ function tick() {
   }
 
   // プレイ更新
-  if (E.mode === 'play') {
+  if (E.mode === 'play' || E.mode === 'netplay') {
     engine.update(E);
-    if (E.stageClear) stageClearFlow();
+    if (E.mode === 'netplay') {
+      net.sendPos(E.px, E.py, E.lives, E.score, E.weapon);
+      if (!net.peerAlive()) onGameDrop('対戦相手との通信が途切れました');
+    }
+    if (E.stageClear) {
+      if (E.mode === 'netplay') E.mode = 'over'; // オンラインは1ステージ完走で結果へ
+      else stageClearFlow();
+    }
     else if (E.over) E.mode = 'over';
   }
 
@@ -198,8 +324,12 @@ function tick() {
   switch (E.mode) {
     case 'menu': menuUI.drawMenu(E); break;
     case 'help': menuUI.drawHelp(E); break;
+    case 'lobby': netUI.drawLobby(E); break;
+    case 'netconfig': netUI.drawNetConfig(E); break;
+    case 'netwait': netUI.drawWait(E); break;
     case 'intro': introUI.drawIntro(E); break;
     case 'play': renderer.renderGame(E); break;
+    case 'netplay': renderer.renderGame(E); break;
     case 'clear': clearUI.drawClear(E); break;
     case 'over': gameoverUI.drawGameOver(E); break;
     case 'ending': endingUI.drawEnding(E); break;
@@ -209,6 +339,8 @@ function tick() {
 function main() {
   process.stdout.write('\x1b[?25l');
   setupInput(handleKey);
+  net.init({ gameStart: startNetPlay, gameDrop: onGameDrop });
+  net.connectLobby(); // 起動時にロビー「home」へ自動接続
   iv = setInterval(tick, TICK_MS);
   process.on('SIGINT', quit);
   process.on('SIGTERM', quit);
