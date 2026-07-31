@@ -1,18 +1,30 @@
 {
   "name": "galaxy-strike",
-  "version": "1.1.0",
-  "description": "🚀 ターミナルで動くシューティングゲーム - ASCII宇宙を駆けろ！",
+  "version": "1.2.0",
+  "description": "🚀 ターミナルで動くストーリーシューティングゲーム - 5ステージ+ボス戦・武器進化搭載のASCII銀河を駆けろ！",
   "main": "index.js",
   "bin": {
     "galaxy-strike": "./index.js",
     "gstrike": "./index.js",
-    "game" : "./index.js"
+    "game": "./index.js"
   },
-  "keywords": ["game", "shooter", "terminal", "ascii", "space", "cli-game"],
+  "keywords": [
+    "game",
+    "shooter",
+    "terminal",
+    "ascii",
+    "space",
+    "cli-game",
+    "story",
+    "boss"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/ryotagtagtag-wq/terminal-shooter"
   },
-  "files": ["index.js"]
+  "files": [
+    "index.js",
+    "src"
+  ]
 }
