@@ -5,13 +5,14 @@
   "main": "index.js",
   "bin": {
     "galaxy-strike": "./index.js",
-    "gstrike": "./index.js"
+    "gstrike": "./index.js",
+    "game" : "./index.js"
   },
   "keywords": ["game", "shooter", "terminal", "ascii", "space", "cli-game"],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ryotagtagtag/galaxy-strike"
+    "url": "https://github.com/ryotagtagtag-wq/terminal-shooter"
   },
   "files": ["index.js"]
 }
