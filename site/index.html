@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GALAXY STRIKE 🚀 - ターミナルで動くストーリーシューティング</title>
+  <meta name="description" content="GALAXY STRIKE はターミナルで動くストーリーシューティングゲーム。全5ステージ+ボス戦、武器進化、アイテムシステム搭載。npx galaxy-strike ですぐ遊べます。">
+  <meta property="og:title" content="GALAXY STRIKE 🚀">
+  <meta property="og:description" content="ターミナルで動くストーリーシューティングゲーム。全5ステージ+ボス戦・武器進化・アイテム搭載。">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>▲</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 星背景 -->
+  <div id="stars" aria-hidden="true"></div>
+
+  <!-- ナビゲーション -->
+  <header class="nav">
+    <a class="nav-logo" href="#top">▲ <span>GALAXY STRIKE</span></a>
+    <nav class="nav-links">
+      <a href="#features">特徴</a>
+      <a href="#demo">デモ</a>
+      <a href="#controls">操作</a>
+      <a href="#items">アイテム</a>
+      <a href="#install">インストール</a>
+      <a class="btn-ghost" href="https://github.com/ryotagtagtag-wq/terminal-shooter" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <!-- ヒーロー -->
+    <section class="hero">
+      <div class="hero-ship" aria-hidden="true">
+        <span class="ship">▲</span>
+        <span class="shot">|</span>
+      </div>
+      <pre class="hero-title" aria-label="GALAXY STRIKE">      ▄▄▄▄▄▄▄▄▄▄▄
+     █████████████
+     ▀▀▀█████▀▀▀▀
+        ███████
+       █████████
+  ▄▄▄███▀▀▀▀▀▀███▄▄▄
+  ██████      ██████
+  ▀▀▀▀▀▀      ▀▀▀▀▀▀
+  ◄────────────────►</pre>
+      <h1 class="hero-wordmark">GALAXY STRIKE</h1>
+      <p class="hero-tag">ターミナルで駆けろ、銀河の最前線へ。<br>ストーリーモード・武器進化・アイテム搭載の本格 ASCII シューティング</p>
+      <div class="hero-cmd">
+        <code>npx galaxy-strike</code>
+        <button id="copy-btn" type="button" aria-label="コマンドをコピー">COPY</button>
+      </div>
+      <p class="hero-sub">← → で移動 / Space で射撃 / 全5ステージ + ボス戦</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="#install">遊び方を見る</a>
+        <a class="btn-ghost" href="https://www.npmjs.com/package/galaxy-strike" target="_blank" rel="noopener">npm で見る</a>
+      </div>
+    </section>
+
+    <!-- 特徴 -->
+    <section id="features" class="section">
+      <h2 class="section-title">FEATURES <span>特徴</span></h2>
+      <div class="cards">
+        <article class="card">
+          <div class="card-emoji">🎮</div>
+          <h3>ストーリーモード</h3>
+          <p>全5ステージ。パイロット「カイト」とオペレーター「ミア」の台詞と共に、帝国機甲軍団「バルガン」の母艦を目指す。</p>
+          <p class="card-tag">SECTOR-01 → 05</p>
+        </article>
+        <article class="card">
+          <div class="card-emoji">🛠️</div>
+          <h3>武器進化</h3>
+          <p>ステージクリアごとに射撃パターンが進化。単発から始まり、最終的には五方向×貫通の最強弾「ノヴァブリッツ」へ。</p>
+          <p class="card-tag">Lv1 → Lv6</p>
+        </article>
+        <article class="card">
+          <div class="card-emoji">👾</div>
+          <h3>ボス戦</h3>
+          <p>各ステージの最後には巨大ボスが待ち受ける。難度はステージが進むほどスケーリングする敵AI。</p>
+          <p class="card-tag">WATCHER / NEBULA / IRONWALL / GRAVITY / VULCAN</p>
+        </article>
+        <article class="card">
+          <div class="card-emoji">💎</div>
+          <h3>アイテム</h3>
+          <p>敵撃破で 25% ドロップ。ライフ回復・10秒パワーモード・オーバードライブを駆使して生き残れ。</p>
+          <p class="card-tag">♥ P ★</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ブラウザで遊べるデモ -->
+    <section id="demo" class="section section-demo">
+      <h2 class="section-title">LIVE DEMO <span>ブラウザで体験</span></h2>
+      <p class="demo-hint">← → で移動、Space で射撃。ターミナル版の簡易デモです。</p>
+      <div class="demo-wrap">
+        <pre id="demo-field" aria-label="ゲームデモ画面"></pre>
+        <div class="demo-hud" id="demo-hud">SCORE:00000  ♥♥♥</div>
+      </div>
+      <p class="demo-focus">※ デモにフォーカスしてから操作してください。本編はターミナルでお楽しみください。</p>
+    </section>
+
+    <!-- 操作 -->
+    <section id="controls" class="section">
+      <h2 class="section-title">CONTROLS <span>操作方法</span></h2>
+      <div class="key-grid">
+        <div class="key"><kbd>←</kbd><kbd>→</kbd><p>移動</p></div>
+        <div class="key"><kbd>A</kbd><kbd>D</kbd><p>移動（アルファベット）</p></div>
+        <div class="key"><kbd>Space</kbd><kbd>W</kbd><kbd>↑</kbd><p>射撃</p></div>
+        <div class="key"><kbd>P</kbd><p>一時停止</p></div>
+        <div class="key"><kbd>R</kbd><p>再挑戦</p></div>
+        <div class="key"><kbd>M</kbd><p>メニューへ</p></div>
+        <div class="key"><kbd>Q</kbd><p>終了</p></div>
+      </div>
+    </section>
+
+    <!-- アイテム -->
+    <section id="items" class="section">
+      <h2 class="section-title">ITEMS <span>ドロップアイテム</span></h2>
+      <div class="cards cards-3">
+        <article class="card card-item">
+          <div class="item-icon item-life">♥</div>
+          <h3>ライフ回復</h3>
+          <p>ライフを1個回復。最大5個まで、超過分は +500点に変換。</p>
+        </article>
+        <article class="card card-item">
+          <div class="item-icon item-power">P</div>
+          <h3>パワーモード</h3>
+          <p>10秒間、七方向×貫通の最強弾に変化。敵を一掃せよ。</p>
+        </article>
+        <article class="card card-item">
+          <div class="item-icon item-od">★</div>
+          <h3>オーバードライブ</h3>
+          <p>10秒間、最強弾 + 無敵。レアドロップ。取り逃すな。</p>
+        </article>
+      </div>
+      <p class="item-note">敵撃破時に <strong>25%</strong> の確率でドロップ。ボスは確定でライフを落とす。</p>
+    </section>
+
+    <!-- インストール -->
+    <section id="install" class="section">
+      <h2 class="section-title">INSTALL <span>インストール</span></h2>
+      <div class="install-block">
+        <p>npx でダウンロード不要、すぐに遊べます。</p>
+        <pre class="code">npx galaxy-strike</pre>
+        <p>グローバルインストールして何度も遊ぶなら:</p>
+        <pre class="code">npm install -g galaxy-strike
+galaxy-strike   # または gstrike / game</pre>
+        <div class="install-meta">
+          <span>📦 galaxy-strike</span>
+          <span>🪪 MIT License</span>
+          <span>⬇️ バイナリ3種登録</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>GALAXY STRIKE 🚀 ターミナル発・銀河防衛シューティング</p>
+    <p>
+      <a href="https://github.com/ryotagtagtag-wq/terminal-shooter" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="https://www.npmjs.com/package/galaxy-strike" target="_blank" rel="noopener">npm</a> ·
+      <a href="https://game-ryo.is-a.dev" target="_blank" rel="noopener">by game_ryo</a>
+    </p>
+    <p class="footer-license">© 2026 game_ryo · Released under the MIT License</p>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
