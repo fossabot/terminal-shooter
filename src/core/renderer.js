@@ -72,19 +72,42 @@ function renderGame(E) {
     g[E.py][E.px] = blink ? ' ' : PLAYER;
   }
 
-  // 対戦相手の機体（オンライン対戦時のみ・位置同期）
-  let peerFx = -1, peerFy = -1;
-  if (E.netSide && net.N.started && net.N.peer) {
-    const p = net.N.peer;
-    if (typeof p.x === 'number' && typeof p.y === 'number') {
-      const range = E.netSide === 'L'
-        ? { min: 1, max: E.halfW - 1 }
-        : { min: E.halfW, max: W - 2 };
-      peerFx = Math.floor(Math.max(range.min, Math.min(range.max, p.x)));
-      peerFy = Math.floor(Math.max(1, Math.min(H - 2, p.y)));
-      if (!E.over) g[peerFy][peerFx] = PLAYER;
-    }
-  }
+// 対戦相手の機体（オンライン対戦時のみ・位置同期）
+   let peerFx = -1, peerFy = -1;
+   let peer2Fx = -1, peer2Fy = -1; // 協力モード用の第2プレイヤー
+   if (E.netSide && net.N.started) {
+     if (E.netMode === 'duel') {
+       // 従来の1v1対戦モード
+       const p = net.N.peer;
+       if (typeof p.x === 'number' && typeof p.y === 'number') {
+         const range = E.netSide === 'L'
+           ? { min: 1, max: E.halfW - 1 }
+           : { min: E.halfW, max: W - 2 };
+         peerFx = Math.floor(Math.max(range.min, Math.min(range.max, p.x)));
+         peerFy = Math.floor(Math.max(1, Math.min(H - 2, p.y)));
+         if (!E.over) g[peerFy][peerFx] = PLAYER;
+       }
+     } else if (E.netMode === 'coop') {
+       // 協力モード: 2人のプレイヤーを表示
+       const p1 = net.N.peer;   // 自分自身の情報（または相手の情報）
+       const p2 = net.N.peer2;  // もう1人のプレイヤーの情報
+       
+       // 自分自身の位置を描画（常に青色で表示）
+       if (typeof E.px === 'number' && typeof E.py === 'number') {
+         g[E.py][E.px] = !E.over ? PLAYER : ' ';
+       }
+       
+       // 相手プレイヤーの位置を描画（緑色で表示）
+       if (p2 && typeof p2.x === 'number' && typeof p2.y === 'number') {
+         peer2Fx = Math.floor(p2.x);
+         peer2Fy = Math.floor(p2.y);
+         if (!E.over) g[peer2Fy][peer2Fx] = PLAYER; // 緑色で表示（後で色分け）
+       }
+       
+       // 代替案: peerから情報を取得してもよい（ただし主従関係があるため）
+       // ここでは自分自身の位置はE.px/E.pyから取得し、peer2から相手の位置を取得
+     }
+   }
 
   // ウェーブ/ボスバナー（グリッド中央に重ねる）
   if (E.waveBanner) {
@@ -94,50 +117,77 @@ function renderGame(E) {
     for (let i = 0; i < msg.length && sx + i < W - 1; i++) g[sy][sx + i] = msg[i];
   }
 
-  // ── 描画 ──
-  const bossCh = E.boss ? E.boss.ch : null;
-  let out = '\x1b[1;1H';
-  for (let y = 0; y < H; y++) {
-    out += '\x1b[K';
-    for (let x = 0; x < W; x++) {
-      const ch = g[y][x];
-      if (ch === ' ') { out += ' '; continue; }
-      if (x === peerFx && y === peerFy) out += '\x1b[1;32m' + ch + C.reset; // 対戦相手（緑）
-      else if (ch === PLAYER) out += C.player + PLAYER + C.reset;
-      else if (ch === BULLET) out += C.bullet + ch + C.reset;
-      else if (ch === EBULLET) out += C.ebullet + ch + C.reset;
-      else if (ITEM_COLORS_BY_CHAR[ch]) out += ITEM_COLORS_BY_CHAR[ch] + ch + C.reset;
-      else if (bossCh && ch === bossCh) out += C.boss + ch + C.reset;
-      else if (ch === ENEMY_TYPES.elite.ch) out += '\x1b[1;35m' + ch + C.reset;
-      else if (ENEMY_CHARS.has(ch)) out += C.enemy + ch + C.reset;
-      else if (EXPLODE.includes(ch)) out += C.explode + ch + C.reset;
-      else if (ch === '─' || ch === '│' || ch === '┌' || ch === '┐' || ch === '└' || ch === '┘')
-        out += C.frame + ch + C.reset;
-      else if (ch === '<' || ch === '>' || ch === '!') out += C.gold + ch + C.reset;
-      else out += ch;
-    }
-    out += C.reset + '\n';
-  }
+// ── 描画 ──
+   const bossCh = E.boss ? E.boss.ch : null;
+   let out = '\x1b[1;1H';
+   for (let y = 0; y < H; y++) {
+     out += '\x1b[K';
+     for (let x = 0; x < W; x++) {
+       const ch = g[y][x];
+       if (ch === ' ') { out += ' '; continue; }
+       if (x === peerFx && y === peerFy) out += '\x1b[1;32m' + ch + C.reset; // 対戦相手（緑）
+       else if (x === peer2Fx && y === peer2Fy) out += '\x1b[1;32m' + ch + C.reset; // 協力モードの第2プレイヤー（緑）
+       else if (ch === PLAYER) out += C.player + PLAYER + C.reset;
+       else if (ch === BULLET) out += C.bullet + ch + C.reset;
+       else if (ch === EBULLET) out += C.ebullet + ch + C.reset;
+       else if (ITEM_COLORS_BY_CHAR[ch]) out += ITEM_COLORS_BY_CHAR[ch] + ch + C.reset;
+       else if (bossCh && ch === bossCh) out += C.boss + ch + C.reset;
+       else if (ch === ENEMY_TYPES.elite.ch) out += '\x1b[1;35m' + ch + C.reset;
+       else if (ENEMY_CHARS.has(ch)) out += C.enemy + ch + C.reset;
+       else if (EXPLODE.includes(ch)) out += C.explode + ch + C.reset;
+       else if (ch === '─' || ch === '│' || ch === '┌' || ch === '┐' || ch === '└' || ch === '┘')
+         out += C.frame + ch + C.reset;
+       else if (ch === '<' || ch === '>' || ch === '!') out += C.gold + ch + C.reset;
+       else out += ch;
+     }
+     out += C.reset + '\n';
+   }
 
-  // ── HUD ──
-  const st = stageData(E);
-  const hearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
-  const wname = WEAPONS[E.weapon - 1] ? WEAPONS[E.weapon - 1].name : '';
-  let hud;
-  if (E.netSide && net.N.started) {
-    // オンライン対戦: 1P / 2P 双方を表示
-    const p = net.N.peer;
-    const ph = p && typeof p.lives === 'number'
-      ? '♥'.repeat(Math.max(0, p.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, p.lives)))
-      : '---';
-    const psc = p && typeof p.score === 'number' ? String(p.score).padStart(6, '0') : '------';
-    const tagL = E.netSide === 'L' ? '1P' : '2P';
-    const tagR = E.netSide === 'L' ? '2P' : '1P';
-    hud = ` ${tagL}▲${hearts} ${String(E.score).padStart(6, '0')}   ${tagR}▲${ph} ${psc}`;
-  } else {
-    hud = ` SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/5  WPN:Lv${E.weapon} ${wname}`;
-  }
-  out += '\x1b[K' + hud.substring(0, E.width + 14) + C.reset + '\n';
+// ── HUD ──
+   const st = stageData(E);
+   const hearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
+   const wname = WEAPONS[E.weapon - 1] ? WEAPONS[E.weapon - 1].name : '';
+let hud;
+    if (E.netSide && net.N.started) {
+      if (E.netMode === 'duel') {
+        // 従来の1v1対戦モード: 1P / 2P 双方を表示
+        const p = net.N.peer;
+        const ph = p && typeof p.lives === 'number'
+          ? '♥'.repeat(Math.max(0, p.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, p.lives)))
+          : '---';
+        const psc = p && typeof p.score === 'number' ? String(p.score).padStart(6, '0') : '------';
+        const tagL = E.netSide === 'L' ? '1P' : '2P';
+        const tagR = E.netSide === 'L' ? '2P' : '1P';
+        hud = ` ${tagL}▲${hearts} ${String(E.score).padStart(6, '0')}   ${tagR}▲${ph} ${psc}`;
+      } else if (E.netMode === 'coop') {
+        // 協力モード: 両プレイヤーの情報を表示
+        const p = net.N.peer; // 相手の情報
+        const ph = p && typeof p.lives === 'number'
+          ? '♥'.repeat(Math.max(0, p.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, p.lives)))
+          : '---';
+        const psc = p && typeof p.score === 'number' ? String(p.score).padStart(6, '0') : '------';
+        const myHearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
+        const myScore = String(E.score).padStart(6, '0');
+        hud = ` 1P▲${myHearts} ${myScore}   2P▲${ph} ${psc}`;
+      }
+    } else if (E.mode === 'survival') {
+      // サバイバルモード: 生存時間とベストタイムを表示
+      const hearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
+      const wname = WEAPONS[E.weapon - 1] ? WEAPONS[E.weapon - 1].name : '';
+      const survivalTimeStr = E.survivalTime.toFixed(1);
+      const bestTimeStr = E.bestSurvivalTime.toFixed(1);
+      hud = ` サバイバル  生存時間:${survivalTimeStr}s  ベスト:${bestTimeStr}s  SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  WPN:Lv${E.weapon} ${wname}`;
+    } else if (E.mode === 'timeattack') {
+      // タイムアタックモード: 経過時間とステージ別タイムを表示
+      const hearts = '♥'.repeat(Math.max(0, E.lives)) + '♡'.repeat(Math.max(0, INIT_LIVES - Math.min(INIT_LIVES, E.lives)));
+      const wname = WEAPONS[E.weapon - 1] ? WEAPONS[E.weapon - 1].name : '';
+      const elapsedTime = ((Date.now() - E.timeAttackStartTime) / 1000).toFixed(2);
+      hud = ` タイムアタック  経過時間:${elapsedTime}s  SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/${STAGES.length}  WPN:Lv${E.weapon} ${wname}`;
+    } else {
+      // 通常のストーリーモード
+      hud = ` SCORE:${String(E.score).padStart(6, '0')}  ${hearts}  ST:${E.stage}/${STAGES.length}  WPN:Lv${E.weapon} ${wname}`;
+    }
+   out += '\x1b[K' + hud.substring(0, E.width + 14) + C.reset + '\n';
 
   // パワー/オーバードライブ タイマー
   if (E.power > 0 || E.overdrive > 0) {
@@ -167,14 +217,22 @@ function renderGame(E) {
     out += '\x1b[K' + C.dim + ` 残ウェーブ:${E.wave + 1}/${st.waves.length}` + C.reset + '\n';
   }
 
-  // ── フッター ──
-  const isNet = !!E.netSide;
-  let footer;
-  if (E.over) footer = ' GAME OVER!  [R]再挑戦  [M]ロビーへ  [Q]終了  ';
-  else if (E.paused) footer = ' ** PAUSED **  [P]再開  [R]リトライ  [M]ロビーへ  [Q]終了  ';
-  else if (isNet) footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  M:ロビーへ  Q:終了  ';
-  else footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  Q:終了  ';
-  out += '\x1b[K' + footer.substring(0, E.width + 22) + C.reset;
+// ── フッター ──
+   const isNet = !!E.netSide;
+   let footer;
+   if (E.over) footer = ' GAME OVER!  [R]再挑戦  [M]ロビーへ  [Q]終了  ';
+   else if (E.paused) footer = ' ** PAUSED **  [P]再開  [R]リトライ  [M]ロビーへ  [Q]終了  ';
+   else if (isNet) {
+     if (E.netMode === 'coop') {
+       footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  M:ロビーへ  Q:終了  ';
+     } else {
+       // duel mode
+       footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  M:ロビーへ  Q:終了  ';
+     }
+   } else {
+     footer = ' ←→/AD:移動  Space/W:射撃  P:一時停止  Q:終了  ';
+   }
+   out += '\x1b[K' + footer.substring(0, E.width + 22) + C.reset;
 
   process.stdout.write(out);
 }

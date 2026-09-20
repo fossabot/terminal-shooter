@@ -32,6 +32,12 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
+/** ゲームモード */
+const GAME_MODES = {
+  duel: 'duel',   // 1v1 対戦（左右分割）
+  coop: 'coop'    // 協力モード（同じフィールド）
+};
+
 /** ロビー（共通ルーム）のルームID */
 const LOBBY_ROOM = 'home';
 

@@ -51,6 +51,12 @@ function drawLobby(E) {
   }
   w('\n');
 
+  // モード選択
+  const modeColor = N.mode === 'coop' ? C.green : C.cyan;
+  const modeText = N.mode === 'coop' ? '協力モード' : (N.mode === 'duel' ? '対戦モード' : '未選択');
+  w(centerDisp(` ゲームモード: ${modeColor}${modeText}${C.reset}   [D]対戦  [C]協力`, 80) + '\n');
+  w('\n');
+
   // 募集中の部屋
   const rooms = [...N.lobby.rooms.entries()];
   w(centerDisp(C.gold + ` 募集中の部屋 (${rooms.length}件)` + C.reset, 80) + '\n');
@@ -58,7 +64,8 @@ function drawLobby(E) {
     w(centerDisp(C.dim + '   （募集中の部屋はありません）', 80) + C.reset + '\n');
   } else {
     rooms.slice(0, 9).forEach(([id, r], i) => {
-      w(centerDisp(`  [${i + 1}] ${id}  主催: ${r.from}`, 80) + '\n');
+      const modeIcon = r.mode === 'coop' ? '[C]' : (r.mode === 'duel' ? '[D]' : '[?]');
+      w(centerDisp(`  [${i + 1}] ${id} ${modeIcon}  主催: ${r.from}`, 80) + '\n');
     });
   }
   w('\n\n');
@@ -78,11 +85,22 @@ function drawWait() {
   w(centerDisp(C.dim + `  部屋: ${N.room}`, 80) + C.reset + '\n');
   w(centerDisp(C.dim + `  Cluster: ${N.cluster}`, 80) + C.reset + '\n');
   w('\n');
-  w(centerDisp('  対戦相手が入室するのを待っています…', 80) + '\n');
-  if (N.host) {
-    w(centerDisp(C.dim + '  ※ ロビーに部屋を告知しました。相手が入室すると自動で開始します', 80) + C.reset + '\n');
+  
+  if (N.mode === 'coop') {
+    w(centerDisp('  協力モード: 同じフィールドで協力プレイ', 80) + C.reset + '\n');
+    if (N.host) {
+      w(centerDisp(C.dim + '  ※ ロビーに協力部屋を告知しました。相手が入室すると自動で開始します', 80) + C.reset + '\n');
+    } else {
+      w(centerDisp(C.dim + '  ※ ホストが開始すると自動で協力プレイが始まります', 80) + C.reset + '\n');
+    }
   } else {
-    w(centerDisp(C.dim + '  ※ ホストが開始すると自動で対戦が始まります', 80) + C.reset + '\n');
+    // duel mode (default)
+    w(centerDisp('  対戦相手が入室するのを待っています…', 80) + '\n');
+    if (N.host) {
+      w(centerDisp(C.dim + '  ※ ロビーに部屋を告知しました。相手が入室すると自動で開始します', 80) + C.reset + '\n');
+    } else {
+      w(centerDisp(C.dim + '  ※ ホストが開始すると自動で対戦が始まります', 80) + C.reset + '\n');
+    }
   }
   w('\n\n\n');
   w(centerDisp('  [Q] 中止してロビーへ', 80) + '\n');

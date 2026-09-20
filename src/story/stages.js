@@ -66,6 +66,30 @@ const STAGES = [
     boss: { name: '大母艦 VULCAN', ch: '♛', hp: 45, sp: 0.55, fireEvery: 22, pattern: 'aim' },
     clearScore: 5000,
   },
+  {
+    id: 6,
+    code: 'SECTOR-06',
+    title: '帝国の防衛線',
+    waves: [
+      { enemies: [['grunt', 8], ['elite', 3]], rate: 12, cap: 8 },
+      { enemies: [['diver', 7], ['elite', 4], ['grunt', 5]], rate: 11, cap: 9 },
+      { enemies: [['elite', 5], ['tank', 4], ['diver', 6]], rate: 10, cap: 9 },
+    ],
+    boss: { name: '防衛指揮艦 COMMANDER', ch: '◇', hp: 55, sp: 0.5, fireEvery: 20, pattern: 'spread' },
+    clearScore: 7000,
+  },
+  {
+    id: 7,
+    code: 'SECTOR-07',
+    title: 'バルガン皇帝 最終決戦',
+    waves: [
+      { enemies: [['elite', 6], ['tank', 5], ['diver', 7]], rate: 10, cap: 8 },
+      { enemies: [['elite', 7], ['tank', 6]], rate: 9, cap: 8 },
+      { enemies: [['elite', 5], ['diver', 8], ['tank', 4]], rate: 8, cap: 8 },
+    ],
+    boss: { name: 'バルガン皇帝 FLAGSHIP', ch: '♚', hp: 80, sp: 0.6, fireEvery: 16, pattern: 'aim' },
+    clearScore: 10000,
+  },
 ];
 
 /** 現在のステージデータを取得 */

@@ -25,9 +25,11 @@ const N = {
   apiKey: api.current().apiKey,
   me: api.current().name,
   host: false,
-  side: null,           // 'L' | 'R' | null
+  side: null,           // 'L' | 'R' | null (for duel mode)
+  mode: null,           // 'duel' | 'coop' | null
   sizeMode: 'normal',   // 大画面モードをホストから共有（normal | large）
   peer: null,           // { name, x, y, lives, score, weapon, last }
+  peer2: null,          // { name, x, y, lives, score, weapon, last } (for co-op mode)
   lobby: { players: new Set(), rooms: new Map() },
   // 内部
   wantLobby: true,
@@ -51,6 +53,7 @@ function applyConfig() {
   const c = api.current();
   N.cluster = c.cluster;
   N.apiKey = c.apiKey;
+  // Note: mode is handled separately via negotiation, not stored in config
 }
 
 /** 現在の WebSocket を閉じる */
@@ -85,7 +88,9 @@ function connectLobby() {
   N.status = 'connecting';
   N.room = api.LOBBY_ROOM;
   N.started = false;
+  N.mode = null; // ロビーに戻るときはモードをリセット
   N.peer = null;
+  N.peer2 = null;
   emit('status');
 
   closeConn();
@@ -142,27 +147,31 @@ function onLobbyMessage(msg) {
 }
 
 /** 部屋を作成（ロビーに告知 → 部屋へ移動） */
-function createRoom() {
+function createRoom(mode = 'duel') {
   const roomId = makeRoomId();
-  // ロビーに部屋を告知
-  send(N.conn, 'room', N.me, { roomId, name: N.me });
-  joinRoom(roomId, true);
+  // ロビーに部屋を告知（モード情報も含める）
+  send(N.conn, 'room', N.me, { roomId, name: N.me, mode });
+  joinRoom(roomId, true, mode);
 }
 
 /**
  * 部屋へ接続（部屋IDを切り替える）
  * @param {string} roomId  stone_12345
  * @param {boolean} isHost 部屋を作った側か
+ * @param {string} mode    ゲームモード ('duel' | 'coop')
  */
-function joinRoom(roomId, isHost = false) {
+function joinRoom(roomId, isHost = false, mode = 'duel') {
   clearTimeout(N.retryTimer);
   N.wantLobby = false;
   N.status = 'connecting';
   N.room = roomId;
   N.host = isHost;
-  N.side = isHost ? 'L' : 'R';
+  N.mode = mode; // モードを設定
+  // duel モードでは side を設定、coop モードでは peer2 用に後で設定
+  N.side = isHost && mode === 'duel' ? 'L' : (mode === 'duel' && !isHost ? 'R' : null);
   N.started = false;
   N.peer = null;
+  N.peer2 = null;
   emit('status');
 
   closeConn();
@@ -173,6 +182,11 @@ function joinRoom(roomId, isHost = false) {
     onOpen: () => {
       N.status = 'game';
       N.connected = true;
+      // ホストがまずモードを送信
+      if (N.host) {
+        send(N.conn, 'gmode', N.me, { mode: N.mode });
+      }
+      // 自分自身の参加を通知
       send(N.conn, 'gjoin', N.me, { name: N.me, host: isHost });
       emit('status');
     },
@@ -205,7 +219,18 @@ function onGameMessage(msg) {
   const { event, sender, data } = msg;
   if (!sender || sender === N.me) return;
 
-  if (event === 'gjoin') {
+  if (event === 'gmode') {
+    // モード情報の受信（ゲスト側）
+    if (data && data.mode) {
+      N.mode = data.mode;
+      // ゲスト側では side を設定（ホストは既に設定済み）
+      if (N.mode === 'duel' && !N.host) {
+        N.side = 'R';
+      }
+      // coop モードでは side は使用しない（両方とも同じフィールド）
+    }
+    emit('lobby'); // モード変更をUIに通知
+  } else if (event === 'gjoin') {
     // ホスト側: 相手が来たら開始
     if (N.host && !N.started) {
       N.started = true;
@@ -219,15 +244,52 @@ function onGameMessage(msg) {
       emit('gameStart', 'R', (data && data.size) || 'normal');
     }
   } else if (event === 'gpos') {
-    N.peer = {
-      name: (data && data.name) || sender,
-      x: data ? data.x : null,
-      y: data ? data.y : null,
-      lives: data ? data.lives : null,
-      score: data ? data.score : null,
-      weapon: data ? data.weapon : null,
-      last: Date.now(),
-    };
+    if (N.mode === 'duel') {
+      // 従来の1v1対戦モード
+      N.peer = {
+        name: (data && data.name) || sender,
+        x: data ? data.x : null,
+        y: data ? data.y : null,
+        lives: data ? data.lives : null,
+        score: data ? data.score : null,
+        weapon: data ? data.weapon : null,
+        last: Date.now(),
+      };
+    } else if (N.mode === 'coop') {
+      // 協力モード: 2人目の位置情報を保存
+      const peerData = {
+        name: (data && data.name) || sender,
+        x: data ? data.x : null,
+        y: data ? data.y : null,
+        lives: data ? data.lives : null,
+        score: data ? data.score : null,
+        weapon: data ? data.weapon : null,
+        last: Date.now(),
+        side: data.side || null, // 'L' or 'R'
+      };
+      
+      // ホストとゲストを区別して保存
+      if (N.host) {
+        // ホストの場合: 自身が L、相手が R
+        if (data.side === 'R') {
+          N.peer2 = peerData;
+        } else {
+          // 自分自身のデータは別途管理（main.js 側で）
+          if (!N.peer2 || N.peer2.name !== peerData.name) {
+            N.peer2 = peerData;
+          }
+        }
+      } else {
+        // ゲストの場合: 自身が R、相手が L
+        if (data.side === 'L') {
+          N.peer2 = peerData;
+        } else {
+          if (!N.peer2 || N.peer2.name !== peerData.name) {
+            N.peer2 = peerData;
+          }
+        }
+      }
+    }
   } else if (event === 'gbye') {
     if (N.started) emit('gameDrop', '対戦相手が退出しました');
   }
@@ -238,18 +300,38 @@ function sendPos(x, y, lives, score, weapon) {
   if (N.status !== 'game' || !N.started) return;
   N.posCounter = (N.posCounter || 0) + 1;
   if (N.posCounter % POS_EVERY !== 0) return;
-  send(N.conn, 'gpos', N.me, { name: N.me, x, y, lives, score, weapon });
+  
+  const posData = { name: N.me, x, y, lives, score, weapon };
+  if (N.mode === 'coop') {
+    // 協力モードでは side 情報を追加
+    posData.side = N.host ? 'L' : 'R';
+  }
+  send(N.conn, 'gpos', N.me, posData);
 }
 
 /** 対戦相手がタイムアウトしていないか（main の tick で判定） */
 function peerAlive() {
-  if (!N.started || !N.peer) return true;
-  return Date.now() - N.peer.last < PEER_TIMEOUT;
+  if (!N.started) return true;
+  
+  if (N.mode === 'duel') {
+    // 従来の1v1対戦モード
+    return !N.peer || Date.now() - N.peer.last < PEER_TIMEOUT;
+  } else if (N.mode === 'coop') {
+    // 協力モード: 両方のピアが生きている必要はなく、少なくとも片方が生きていればOK
+    // ただし、自分自身は常に生きていると仮定
+    const peer1Alive = !N.peer || Date.now() - N.peer.last < PEER_TIMEOUT;
+    const peer2Alive = !N.peer2 || Date.now() - N.peer2.last < PEER_TIMEOUT;
+    return peer1Alive || peer2Alive; // 少なくとも片方が生きていれば続行
+  }
+  return true;
 }
 
 /** 対戦終了（退出）→ ロビーへ戻る */
 function leaveGame() {
-  if (N.conn && N.status === 'game') send(N.conn, 'gbye', N.me, {});
+  if (N.conn && N.status === 'game') {
+    // 協力モードでも従来のメッセージで問題なし
+    send(N.conn, 'gbye', N.me, {});
+  }
   connectLobby();
 }
 

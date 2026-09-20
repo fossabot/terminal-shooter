@@ -26,7 +26,7 @@ const TICK_MS = 90;
 const MAX_WEAPON = 6;
 const EXTRA_LIFE_SCORE = 8000;
 const STAGE_CLEAR_LIFE = 1;
-const TOTAL_STAGES = 5;
+const TOTAL_STAGES = 7;
 
 // ── アイテム（敵撃破時のドロップ） ──
 const DROP_RATE = 0.25;                 // 敵撃破時のドロップ確率 (25%)
