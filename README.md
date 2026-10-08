@@ -1,4 +1,6 @@
 # NOVA 🚀（旧: GALAXY STRIKE）
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fryopc%2Fterminal-shooter.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fryopc%2Fterminal-shooter?ref=badge_shield)
+
 
 ターミナルで動く **ストーリーシューティングゲーム**。`npx galaxy-strike` ですぐ遊べます。
 
@@ -61,3 +63,6 @@ node index.js
 ## License
 
 MIT
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fryopc%2Fterminal-shooter.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fryopc%2Fterminal-shooter?ref=badge_large)
